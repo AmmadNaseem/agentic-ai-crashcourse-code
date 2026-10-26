@@ -24,4 +24,4 @@ if __name__ == "__main__":
     ]
     for s1, s2 in pairs:
         sim = cosine_similarity(s1, s2)
-        print(f"{sim:.4f}  |  \"{s1}\" vs \"{s2}\"")
+        print(f'{sim:.4f}  |  "{s1}" vs "{s2}"')

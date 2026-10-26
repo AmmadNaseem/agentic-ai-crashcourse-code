@@ -47,6 +47,13 @@ python -m venv .venv
 # macOS/Linux
 source .venv/bin/activate
 
+cmmand to run evalution of model:
+Run locally:
+.\.venv\Scripts\python.exe .\9_eval\func_eval.py
+
+When satisfied, upload an evaluation to LangSmith:
+.\.venv\Scripts\python.exe .\9_eval\func_eval.py --langsmith
+
 pip install -e .
 ```
 

@@ -6,8 +6,14 @@ from langchain_groq import ChatGroq
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage
 
-llm = ChatGroq(model="qwen/qwen3-32b", temperature=0)
-# llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
+llm = ChatGroq(
+    model="qwen/qwen3.8-27b",
+    temperature=0,
+    max_tokens=512,
+    reasoning_effort="none",
+    reasoning_format="hidden",
+    max_retries=3,
+)
 
 
 @tool
@@ -19,7 +25,11 @@ def inventory_tool(product_name: str) -> str:
         "AirPods Pro": "Out of Stock: Available Items = 0",
         "MacBook Air M3": "In Stock: Available Items = 5"
     }
-    return inventory.get(product_name, "Product not found in inventory.")
+    return next(
+        (value for name, value in inventory.items()
+         if name.casefold() == product_name.strip().casefold()),
+        "Product not found in inventory.",
+    )
 
 # Inventory Agent
 agent = create_agent(
@@ -33,13 +43,14 @@ agent = create_agent(
     When a user asks about a product, use the inventory_tool to fetch the inventory data.
 
     - Always call the inventory_tool with the full product name.
-    - inventory_tool will return a dictionary which you need to parse to extract stock status, inventory items etc.
+    - inventory_tool will return a text string which you need to read to extract stock status, inventory items etc.
     - Respond with clear, concise information including:
         1. The stock status (e.g., "In Stock", "Out of Stock")
         2. The number of available items (if applicable)
     - If the product is not found, say: "The product is not available in our inventory."
 
-    Never guess or hallucinate information. Do not respond unless the inventory_tool is called.
+    Never guess inventory information. For inventory questions, call inventory_tool before answering.
+    For unrelated questions, refuse directly without calling a tool.
     Keep your response short and informative.
     """
 )
