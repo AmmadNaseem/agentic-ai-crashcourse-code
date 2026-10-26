@@ -5,7 +5,13 @@ from langchain_groq import ChatGroq
 from dotenv import load_dotenv
 load_dotenv()
 
-llm = ChatGroq(model="qwen/qwen3-32b", temperature=0)
+llm = ChatGroq(
+    model="qwen/qwen3.8-27b",
+    temperature=0,
+    max_tokens=512,
+    reasoning_effort="none",
+    reasoning_format="hidden",
+)
 # llm = ChatGroq(model="openai/gpt-oss-20b", temperature=0)
 
 @tool
@@ -17,10 +23,10 @@ def get_customer_info_tool(customer_name: str) -> str:
     """
     # Simulated customer data   
     customers = {
-        "Krishna": {
-            "email": "krishna_001@abc.com",
+        "ammadnaseem": {
+            "email": "ammadnaseem@abc.com",
             "credit_card": "4111-1111-1111-1111",   # Visa test card ✓ Luhn valid
-            "name": "Krishna",
+            "name": "ammadnaseem",
             "loyalty_status": "Gold"
         },
         "Alice": {
@@ -78,7 +84,7 @@ agent = create_agent(
 result = agent.invoke({
     "messages": [{
         "role": "user",
-        "content": "Give me information about customer Krishna"
+        "content": "Give me information about customer ammadnaseem"
     }]
 })
 
