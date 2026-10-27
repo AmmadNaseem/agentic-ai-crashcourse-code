@@ -1,3 +1,4 @@
+from config import CHROMA_DIR, EMBED_MODEL, DATA_DIR
 """
 Builds a merged retriever across all three Chroma collections:
   - faq     : FAQ entries (no chunking — 1 row = 1 doc)
@@ -9,8 +10,6 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.runnables import RunnableLambda
 from langchain_core.documents import Document
 
-CHROMA_DIR  = "chroma_store"
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 def build_retriever(
@@ -35,6 +34,12 @@ def build_retriever(
         embedding_function=embeddings,
         persist_directory=CHROMA_DIR,
     )
+
+    for store, script in [(faq_store, "ingest_faq.py"),
+                          (tickets_store, "ingest_tickets.py"),
+                          (guides_store, "ingest_pdf.py")]:
+        if store._collection.count() == 0:
+            raise ValueError(f"Knowledge collection is empty. Run {script} from the telecom project first.")
 
     faq_retriever     = faq_store.as_retriever(search_kwargs={"k": k_faq})
     tickets_retriever = tickets_store.as_retriever(search_kwargs={"k": k_tickets})

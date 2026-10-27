@@ -1,3 +1,4 @@
+from config import CHROMA_DIR, EMBED_MODEL, DATA_DIR
 """
 Ingests resolved tickets from data/tickets.db into the 'tickets' Chroma collection.
 Run once (or after adding new tickets): python ingest_tickets.py
@@ -9,10 +10,8 @@ from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-CHROMA_DIR = "chroma_store"
 COLLECTION  = "tickets"
-DB_PATH     = os.path.join("data", "tickets.db")
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DB_PATH     = str(DATA_DIR / "tickets.db")
 
 
 def load_ticket_documents(db_path: str) -> list[Document]:

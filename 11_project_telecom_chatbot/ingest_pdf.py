@@ -1,3 +1,4 @@
+from config import CHROMA_DIR, EMBED_MODEL, DATA_DIR
 """
 Ingests data/telecom_guide.pdf into the 'guides' Chroma collection.
 Applies RecursiveCharacterTextSplitter to break the long document into chunks.
@@ -11,10 +12,8 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-CHROMA_DIR = "chroma_store"
 COLLECTION = "guides"
-PDF_PATH   = os.path.join("data", "telecom_guide.pdf")
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+PDF_PATH   = str(DATA_DIR / "telecom_guide.pdf")
 
 CHUNK_SIZE    = 600
 CHUNK_OVERLAP = 100

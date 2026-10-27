@@ -1,3 +1,4 @@
+from config import CHROMA_DIR, EMBED_MODEL, DATA_DIR
 """
 Ingests data/faq.csv into the 'faq' Chroma collection.
 Run once (or whenever the CSV changes): python ingest_faq.py
@@ -9,16 +10,17 @@ from langchain_core.documents import Document
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
 
-CHROMA_DIR = "chroma_store"
 COLLECTION  = "faq"
-CSV_PATH    = os.path.join("data", "faq.csv")
-EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+CSV_PATH    = str(DATA_DIR / "faq.csv")
 
 
 def load_faq_documents(csv_path: str) -> list[Document]:
     df = pd.read_csv(csv_path)
     docs = []
-    for _, row in df.iterrows():
+    for _, row in df.iterrows(): 
+        # The iterrows() function iterates over each row in the DataFrame. 
+        # The underscore (_) is used to ignore the index, 
+        # and row contains the data for the current row.
         content = f"Q: {row['question']}\nA: {row['answer']}"
         docs.append(Document(
             page_content=content,

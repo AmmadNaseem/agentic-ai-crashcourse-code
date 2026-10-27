@@ -4,6 +4,8 @@ os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 import streamlit as st
 from dotenv import load_dotenv
 from rag_chain import build_chain
+from config import MODEL_NAME
+from groq import APIError, RateLimitError
 
 load_dotenv()
 
@@ -36,7 +38,7 @@ if "pending_question" not in st.session_state:
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.title("📡 Telecom Support")
-    st.caption("Powered by RAG · Qwen3-32B on Groq")
+    st.caption(f"Powered by RAG · {MODEL_NAME} on Groq")
     st.divider()
 
     st.markdown("**Sample questions**")
@@ -69,7 +71,16 @@ if question:
         st.markdown(question)
 
     with st.chat_message("assistant"):
-        chain = get_chain()
-        response = st.write_stream(chain.stream(question))
+        try:
+            chain = get_chain()
+            response = st.write_stream(chain.stream(question))
+        except RateLimitError:
+            st.warning("Groq rate limit reached. Wait a minute before trying again. "
+                       "Lower TELECOM_MAX_TOKENS if this continues.")
+            st.stop()
+        except (APIError, ValueError, OSError) as exc:
+            st.error(f"Unable to answer: {exc}")
+            st.info("Check your Groq settings and run all three ingestion scripts before chatting.")
+            st.stop()
 
     st.session_state.messages.append({"role": "assistant", "content": response})

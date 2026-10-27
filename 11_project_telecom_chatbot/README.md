@@ -1,6 +1,6 @@
 # RAG Telecom Chatbot
 
-A Retrieval-Augmented Generation (RAG) customer care chatbot for telecom support. It answers questions about mobile connectivity, billing, SIM issues, and roaming by retrieving relevant context from three knowledge sources and generating responses with Qwen3-32B via Groq.
+A Retrieval-Augmented Generation (RAG) customer care chatbot for telecom support. It answers questions about mobile connectivity, billing, SIM issues, and roaming by retrieving relevant context from three knowledge sources and generating responses with Qwen 3.8 27B via Groq.
 
 ## Architecture
 
@@ -14,11 +14,11 @@ Merged Retriever (top-k from each store)
   └── ChromaDB · guides     (PDF guide chunks)
      │
      ▼
-ChatPromptTemplate → Qwen3-32B (Groq) → Answer
+ChatPromptTemplate → Qwen 3.8 27B (Groq) → Answer
 ```
 
 **Embedding model:** `sentence-transformers/all-MiniLM-L6-v2` (runs locally via HuggingFace)  
-**LLM:** `qwen/qwen3-32b` served by [Groq](https://groq.com)
+**LLM:** `qwen/qwen3.8-27b` served by [Groq](https://groq.com)
 
 ## Project Structure
 
@@ -124,3 +124,36 @@ python data/generate_pdf.py
 ```
 
 After regenerating, re-run the corresponding ingest script.
+
+## Running from this repository on Windows
+
+Settings are read from this project’s `.env`, then the repository `.env`. Existing
+shell variables take precedence. Model, embedding model, token budget, timeout,
+and retries are configured in `.env.example` and loaded by `config.py`. The default
+response budget is 512 tokens, capped at 1,000; adjust the ceiling to your account.
+Changing the embedding model requires rebuilding all three collections in a new
+or cleared project vector store. The existing embedding model is preserved.
+
+Run from the repository root using the existing environment:
+
+```powershell
+.\.venv\Scripts\python.exe .\11_project_telecom_chatbot\ingest_faq.py
+.\.venv\Scripts\python.exe .\11_project_telecom_chatbot\ingest_tickets.py
+.\.venv\Scripts\python.exe .\11_project_telecom_chatbot\ingest_pdf.py
+.\.venv\Scripts\python.exe -m streamlit run .\11_project_telecom_chatbot\app.py
+# CLI alternative
+.\.venv\Scripts\python.exe .\11_project_telecom_chatbot\main.py
+```
+
+All data and Chroma paths resolve relative to this project, independently of the
+terminal directory. An empty collection produces an ingestion instruction.
+The UI and CLI show API/rate-limit errors without ending with an uncaught exception.
+Qwen reasoning is disabled and hidden; Qwen-specific options are omitted when
+selecting a different Groq model. Restart Streamlit after changing settings.
+
+Model reference: https://console.groq.com/docs/model/qwen/qwen3.8-27b
+
+Validation: Python syntax, shared paths, FAQ/ticket reads, LCEL invoke and
+streaming with a fake model, token settings, and model-specific options passed
+offline checks. Live Groq requests, embedding downloads, ingestion, and browser
+interaction were not exercised.
