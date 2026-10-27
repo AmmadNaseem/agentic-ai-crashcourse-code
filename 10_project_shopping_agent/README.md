@@ -10,15 +10,22 @@ Set these values in the repository-root `.env` (never commit real keys):
 GROQ_API_KEY=your_groq_api_key
 SHOPPING_MODEL=qwen/qwen3.8-27b
 SHOPPING_VISION_MODEL=qwen/qwen3.8-27b
-SHOPPING_MAX_TOKENS=1024
+SHOPPING_MAX_TOKENS=512
+SHOPPING_OUTPUT_TOKEN_LIMIT=1000
 LANGSMITH_TRACING=false
 LANGCHAIN_TRACING_V2=false
 ```
 
 Qwen 3.8 27B supports both tool calling and images. The reasoning options in
 `shopping_agent.py` are Qwen-specific; review those options when selecting another model.
+SHOPPING_OUTPUT_TOKEN_LIMIT caps the configured response budget even when
+SHOPPING_MAX_TOKENS is set higher. Match this ceiling to your account limit.
 The token cap limits each response; it does not cap accumulated conversation input
-or bypass Groq account rate limits. Local execution still calls Groq.
+or bypass Groq account rate limits. The 512-token default stays below the
+1,000 output-token limit reported by Groq for this account. If Groq returns a
+429 after several calls, wait for the quota to reset before retrying. Restart
+Streamlit after changing `.env`; an existing shell environment variable takes
+precedence over `.env`. Local execution still calls Groq.
 
 ## Run
 
@@ -64,3 +71,10 @@ API failures are displayed in the UI while preserving chat history. Image-search
 triggers are consumed before execution to avoid automatic repeats on rerun.
 If checkout fails after writing an order, inspect the orders table before retrying;
 checkout is a demo and does not implement payment or order idempotency.
+
+Image uploads are decoded with Pillow, normalized to RGB JPEG, and analyzed
+directly before catalogue search, avoiding model-generated Windows paths. Chat
+shows the original upload name. Temporary upload files are removed after analysis.
+Offline validation covers the supplied honey PNG, normalized vision payload,
+Python syntax, and the response-token ceiling using a mocked vision model.
+Live Groq responses and browser interaction still require verification.

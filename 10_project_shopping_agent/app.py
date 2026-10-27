@@ -3,16 +3,24 @@ import tempfile
 
 import streamlit as st
 
-from groq import APIError
+from groq import APIError, RateLimitError
+from PIL import UnidentifiedImageError
 
-from shopping_agent import agent
+from shopping_agent import agent, describe_product_image
 
 
 def get_response(messages):
     """Show API failures without discarding chat history or retrying an order."""
     try:
-        result = agent.invoke({"messages": messages})
+        result = agent.invoke({"messages": [
+            {"role": msg["role"], "content": msg["content"]} for msg in messages
+        ]})
         return result["messages"][-1].text.replace("`", "")
+    except RateLimitError:
+        st.warning("Groq’s rate limit was reached. Wait a minute, then try again. "
+                   "If this continues, lower SHOPPING_MAX_TOKENS in .env and restart Streamlit.")
+        st.info("Review Orders in store.db before repeating a checkout request.")
+        st.stop()
     except APIError as exc:
         st.error(f"Groq request failed: {exc}")
         st.info("Check your API key, model access, and rate limits. Review Orders in store.db before repeating a checkout request.")
@@ -63,8 +71,8 @@ with st.sidebar:
 # Render history — show a friendlier label for image-search messages
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
-        if msg["role"] == "user" and msg["content"].startswith("I uploaded a product image"):
-            filename = msg["content"].split("Image path:")[-1].strip()
+        if msg["role"] == "user" and (msg.get("image_name") or msg["content"].startswith("I uploaded a product image")):
+            filename = msg.get("image_name", msg["content"].split("Image path:")[-1].strip())
             st.markdown(f"Searching by image: **{os.path.basename(filename)}**")
         else:
             st.markdown(msg["content"].replace("$", r"\$"))
@@ -78,7 +86,7 @@ if (
     and "pending_image" in st.session_state
 ):
     # Consume the trigger before calling the agent so reruns cannot repeat it.
-    del st.session_state.pending_image
+    image_path = st.session_state.pop("pending_image")
     with st.chat_message("assistant"):
         with st.spinner("Analyzing image and searching…"):
             response = get_response(st.session_state.messages)

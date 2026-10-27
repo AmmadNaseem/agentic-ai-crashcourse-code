@@ -1,9 +1,11 @@
 import base64
+import io
 import json
 import os
 import sqlite3
 from typing import Optional
 
+from PIL import Image, ImageOps
 from dotenv import load_dotenv
 from langchain.agents import create_agent
 from langchain.tools import tool
@@ -19,7 +21,10 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "store.db")
 # Separate overrides let text and image models be changed independently.
 MODEL_NAME = os.getenv("SHOPPING_MODEL", "qwen/qwen3.8-27b")
 VISION_MODEL_NAME = os.getenv("SHOPPING_VISION_MODEL", "qwen/qwen3.8-27b")
-MAX_TOKENS = int(os.getenv("SHOPPING_MAX_TOKENS", "1024"))
+OUTPUT_TOKEN_LIMIT = int(os.getenv("SHOPPING_OUTPUT_TOKEN_LIMIT", "1000"))
+MAX_TOKENS = min(int(os.getenv("SHOPPING_MAX_TOKENS", "512")), OUTPUT_TOKEN_LIMIT)
+if MAX_TOKENS < 1:
+    raise ValueError("Shopping output token limits must be positive.")
 
 llm = ChatGroq(
     model=MODEL_NAME,
@@ -135,12 +140,14 @@ def describe_product_image(image_path: str) -> str:
     Use this when the user uploads a photo of a product they are interested in.
     The returned attributes can be used directly with search_products.
     """
-    with open(image_path, "rb") as f:
-        image_data = base64.b64encode(f.read()).decode()
-    # The 'with' statement is used to open the file and ensure it is properly closed after reading.
-    # It is a context manager that handles resource management automatically.
-    ext = os.path.splitext(image_path)[1].lower().lstrip(".")
-    mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
+    # Decode locally and send a consistent format, regardless of file extension.
+    with Image.open(image_path) as image:
+        image = ImageOps.exif_transpose(image).convert("RGB")
+        image.thumbnail((1024, 1024))
+        buffer = io.BytesIO()
+        image.save(buffer, format="JPEG")
+    image_data = base64.b64encode(buffer.getvalue()).decode("ascii")
+    mime = "image/jpeg"
 
     message = HumanMessage(content=[
         {
