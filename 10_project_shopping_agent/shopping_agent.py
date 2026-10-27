@@ -137,7 +137,8 @@ def describe_product_image(image_path: str) -> str:
     """
     with open(image_path, "rb") as f:
         image_data = base64.b64encode(f.read()).decode()
-
+    # The 'with' statement is used to open the file and ensure it is properly closed after reading.
+    # It is a context manager that handles resource management automatically.
     ext = os.path.splitext(image_path)[1].lower().lstrip(".")
     mime = "image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}"
 
