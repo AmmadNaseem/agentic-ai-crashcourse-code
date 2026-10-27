@@ -35,6 +35,11 @@ def main():
 
     # Tag each chunk so we know it came from the guide
     for i, chunk in enumerate(chunks):
+        # The enumerate() function adds a counter to the chunks, 
+        # so i is the index and chunk is the current chunk.
+        # enumerate() advantage is that we can keep track of the order of chunks, 
+        # which can be useful for reconstructing the original document or 
+        # for reference purposes.
         chunk.metadata["source"] = "guide"
         chunk.metadata["chunk_index"] = i
 

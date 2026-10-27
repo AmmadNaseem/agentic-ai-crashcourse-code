@@ -13,9 +13,9 @@ from langchain_core.documents import Document
 
 
 def build_retriever(
-    k_faq: int = 3,
-    k_tickets: int = 3,
-    k_guides: int = 3,
+    k_faq: int = 3, #how many top k record we want to retrieve from the FAQ collection
+    k_tickets: int = 3, #how many top k record we want to retrieve from the tickets collection
+    k_guides: int = 3, #how many top k record we want to retrieve from the guides collection
 ) -> RunnableLambda:
     embeddings = HuggingFaceEmbeddings(model_name=EMBED_MODEL)
 
