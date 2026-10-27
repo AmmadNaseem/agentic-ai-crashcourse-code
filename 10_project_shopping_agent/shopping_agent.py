@@ -5,6 +5,8 @@ import os
 import sqlite3
 from typing import Optional
 
+from pydantic import BaseModel, Field
+from langchain_core.output_parsers import PydanticOutputParser
 from PIL import Image, ImageOps
 from dotenv import load_dotenv
 from langchain.agents import create_agent
@@ -133,6 +135,17 @@ def checkout(product_id: int) -> str:
     )
 
 
+class ImageAttributes(BaseModel):
+    is_product: bool = Field(description="True for recognizable goods or food ingredients, including loose/unpackaged oats, grains, honey, fruit, and nuts. Packaging, branding, and labels are NOT required. False for live animals, people, scenery, or unidentifiable subjects.")
+    product_type: str = Field(description="What is actually visible, including non-product subjects")
+    search_query: Optional[str] = Field(default=None, description="Short ordinary words naming the visible item, e.g. oats or honey; no brand, packaging, underscores, or descriptive scene words. Null for non-products or uncertainty.")
+    is_organic: Optional[bool] = Field(default=None, description="True or false only with visible label evidence; otherwise null")
+    description: str
+
+
+image_parser = PydanticOutputParser(pydantic_object=ImageAttributes)
+
+
 @tool
 def describe_product_image(image_path: str) -> str:
     """
@@ -157,18 +170,49 @@ def describe_product_image(image_path: str) -> str:
         {
             "type": "text",
             "text": (
-                "Look at this product image and extract its key attributes. "
-                "Return ONLY a JSON object with these fields:\n"
-                "- product_type: what kind of product it is (e.g. honey, olive oil, almonds)\n"
-                "- search_query: a short keyword to search for it (e.g. 'honey', 'olive oil')\n"
-                "- is_organic: true if the label says organic, false if not, null if unclear\n"
-                "- description: one sentence describing the product"
+                "Identify the main visible subject independently of any store inventory. "
+                "Recognizable food ingredients count as products even when loose, in a bowl, "
+                "or without packaging, branding, price tags, or labels. "
+                "For a bowl of oat flakes: is_product=true, product_type=rolled oats, "
+                "search_query=oats, is_organic=null. For honey in a jar without a label: "
+                "is_product=true, search_query=honey, is_organic=null. "
+                "A live animal (for example an elephant), person, scenery, or unclear image is not a product: "
+                "set is_product=false and search_query=null. Never substitute a grocery item. "
+                "Do not infer organic status without a visible label.\n"
+                + image_parser.get_format_instructions()
             ),
         },
     ])
 
     response = vision_llm.invoke([message])
-    return response.text
+    return image_parser.parse(response.text).model_dump_json()
+
+
+def find_products_by_image(image_path: str) -> str:
+    """Analyze one upload independently and render only actual database matches."""
+    attributes = ImageAttributes.model_validate_json(
+        describe_product_image.invoke({"image_path": image_path})
+    )
+    query = " ".join((attributes.search_query or "").replace("_", " ").split())
+    if not attributes.is_product or not query or "%" in query:
+        return "I couldn't identify a store product in this image. Please upload a clear product photo or describe what you want."
+    products = json.loads(search_products.invoke({
+        "query": query, "is_organic": attributes.is_organic,
+    }))
+    if not products:
+        return "No matching products were found in our store for this image. Please try another product photo or describe what you want."
+    lines = ["Matching products from our store:"]
+    for number, product in enumerate(products, 1):
+        rating = json.loads(get_rating.invoke({"product_id": product["id"]}))
+        stars = rating.get("average_rating")
+        rating_text = f"{stars:.2f}" if stars is not None else "unrated"
+        organic = "organic" if product["is_organic"] else "non-organic"
+        lines.append(
+            f"#{number}. {product['name']} (ID:{product['id']}) — "
+            f"$ {product['price']:.2f} ★{rating_text} — {organic}"
+        )
+    lines.append("Would you like to order one? Tell me its number.")
+    return "\n\n".join(lines)
 
 
 # ---------------------------------------------------------------------------

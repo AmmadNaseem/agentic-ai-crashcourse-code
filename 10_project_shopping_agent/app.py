@@ -6,7 +6,7 @@ import streamlit as st
 from groq import APIError, RateLimitError
 from PIL import UnidentifiedImageError
 
-from shopping_agent import agent, describe_product_image
+from shopping_agent import agent, find_products_by_image
 
 
 def get_response(messages):
@@ -60,8 +60,8 @@ with st.sidebar:
             image_path = tmp.name
 
         prompt = f"I uploaded a product image. Please analyze it and find similar products in the store. Image path: {image_path}"
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        st.session_state.pending_image = uploaded_file.name
+        st.session_state.messages.append({"role": "user", "content": prompt, "image_name": uploaded_file.name})
+        st.session_state.pending_image = image_path
         st.rerun()
 
 # ---------------------------------------------------------------------------
@@ -89,7 +89,18 @@ if (
     image_path = st.session_state.pop("pending_image")
     with st.chat_message("assistant"):
         with st.spinner("Analyzing image and searching…"):
-            response = get_response(st.session_state.messages)
+            try:
+                # No previous chat is sent to image analysis or catalogue matching.
+                response = find_products_by_image(image_path)
+                st.session_state.messages[-1]["content"] = "Find similar products for my uploaded image."
+            except RateLimitError:
+                response = "Groq's rate limit was reached. Wait a minute, then click Find similar products again."
+            except (APIError, UnidentifiedImageError, OSError, ValueError) as exc:
+                response = "I couldn't analyze this image reliably. Please try another photo or describe the product."
+                st.error(f"Image analysis failed: {exc}")
+            finally:
+                if os.path.isfile(image_path):
+                    os.unlink(image_path)
         st.markdown(response.replace("$", r"\$"))
 
     st.session_state.messages.append({"role": "assistant", "content": response})

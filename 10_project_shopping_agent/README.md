@@ -78,3 +78,18 @@ shows the original upload name. Temporary upload files are removed after analysi
 Offline validation covers the supplied honey PNG, normalized vision payload,
 Python syntax, and the response-token ceiling using a mocked vision model.
 Live Groq responses and browser interaction still require verification.
+
+Image matching now validates a structured product/non-product result. Non-products,
+uncertain/blank queries, and searches with no catalogue matches return a message
+without suggesting products. Uploads are analyzed independently of chat history;
+matching product names, IDs, prices, and ratings are rendered from database reads.
+Regression checks passed with mocked non-product, empty query, no-match, honey,
+and invalid-JSON results. Actual elephant recognition by Groq and browser behavior
+were not verified; image classification remains model-dependent.
+
+Loose/unpackaged food (such as oats in a bowl) is explicitly accepted by the
+image-classification prompt; labels and retail packaging are not required.
+Unknown organic status leaves both organic and non-organic matches eligible.
+Underscore-separated search terms are normalized to spaces. Offline regression
+checks cover oats, rolled_oats, whitespace, elephant rejection, and blank queries.
+A live oats check was attempted but failed with APIConnectionError in this environment.
