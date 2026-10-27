@@ -55,7 +55,7 @@ def get_ratings_for_products(product_ids: list[int]) -> list[dict]:
     ]
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # This block will only run if the script is executed directly, not if it is imported as a module in another script.
     # Single product
     result = get_product_rating(1)
     print("Single product rating:")

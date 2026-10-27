@@ -16,8 +16,25 @@ load_dotenv()
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "store.db")
 
-llm = ChatGroq(model="qwen/qwen3-32b", temperature=0)
-vision_llm = ChatGroq(model="meta-llama/llama-4-scout-17b-16e-instruct", temperature=0)
+# Separate overrides let text and image models be changed independently.
+MODEL_NAME = os.getenv("SHOPPING_MODEL", "qwen/qwen3.8-27b")
+VISION_MODEL_NAME = os.getenv("SHOPPING_VISION_MODEL", "qwen/qwen3.8-27b")
+MAX_TOKENS = int(os.getenv("SHOPPING_MAX_TOKENS", "1024"))
+
+llm = ChatGroq(
+    model=MODEL_NAME,
+    temperature=0,
+    max_tokens=MAX_TOKENS,
+    reasoning_effort="none",
+    reasoning_format="hidden",
+)
+vision_llm = ChatGroq(
+    model=VISION_MODEL_NAME,
+    temperature=0,
+    max_tokens=MAX_TOKENS,
+    reasoning_effort="none",
+    reasoning_format="hidden",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -36,6 +53,8 @@ def search_products(query: str, max_price: Optional[float] = None, is_organic: O
     cursor = conn.cursor()
 
     sql = "SELECT id, name, category, price, description, is_organic FROM products WHERE 1=1"
+    #why use 1=1? 
+    # It allows us to append conditions dynamically without worrying about whether it's the first condition or not.
     params: list = []
 
     if query:
@@ -141,7 +160,7 @@ def describe_product_image(image_path: str) -> str:
     ])
 
     response = vision_llm.invoke([message])
-    return response.content
+    return response.text
 
 
 # ---------------------------------------------------------------------------

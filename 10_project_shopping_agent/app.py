@@ -3,7 +3,21 @@ import tempfile
 
 import streamlit as st
 
+from groq import APIError
+
 from shopping_agent import agent
+
+
+def get_response(messages):
+    """Show API failures without discarding chat history or retrying an order."""
+    try:
+        result = agent.invoke({"messages": messages})
+        return result["messages"][-1].text.replace("`", "")
+    except APIError as exc:
+        st.error(f"Groq request failed: {exc}")
+        st.info("Check your API key, model access, and rate limits. Review Orders in store.db before repeating a checkout request.")
+        st.stop()
+
 
 # ---------------------------------------------------------------------------
 # Page config
@@ -16,6 +30,10 @@ st.caption("Tell me what you want — I'll search, rate, and order the best matc
 # ---------------------------------------------------------------------------
 # Sidebar — shop by image
 # ---------------------------------------------------------------------------
+# Initialize state before sidebar actions can append messages.
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 with st.sidebar:
     st.header("Shop by Image")
     st.caption("Upload a photo of a product and I'll find similar items in our store.")
@@ -41,8 +59,6 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 # Chat state
 # ---------------------------------------------------------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
 # Render history — show a friendlier label for image-search messages
 for msg in st.session_state.messages:
@@ -61,14 +77,14 @@ if (
     and st.session_state.messages[-1]["role"] == "user"
     and "pending_image" in st.session_state
 ):
+    # Consume the trigger before calling the agent so reruns cannot repeat it.
+    del st.session_state.pending_image
     with st.chat_message("assistant"):
         with st.spinner("Analyzing image and searching…"):
-            result = agent.invoke({"messages": st.session_state.messages})
-            response = result["messages"][-1].content.replace("`", "")
+            response = get_response(st.session_state.messages)
         st.markdown(response.replace("$", r"\$"))
 
     st.session_state.messages.append({"role": "assistant", "content": response})
-    del st.session_state.pending_image
     st.rerun()
 
 # ---------------------------------------------------------------------------
@@ -81,8 +97,7 @@ if prompt := st.chat_input("e.g. I want organic honey under $15 with 4+ rating")
 
     with st.chat_message("assistant"):
         with st.spinner("Thinking…"):
-            result = agent.invoke({"messages": st.session_state.messages})
-            response = result["messages"][-1].content.replace("`", "")
+            response = get_response(st.session_state.messages)
         st.markdown(response.replace("$", r"\$"))
 
     st.session_state.messages.append({"role": "assistant", "content": response})
